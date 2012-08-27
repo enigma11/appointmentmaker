@@ -9,11 +9,9 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
-import java.util.Properties;
 import java.util.logging.Level;
 
 import static com.google.code.tempusfugit.temporal.Duration.seconds;
@@ -31,11 +29,12 @@ public class AppointmentMaker {
 
     public AppointmentMaker() throws Exception {
         turnOffHtmlUnitLoggerOff();
-        mongoTemplate = new MongoTemplate(new Mongo(new MongoURI(System.getenv("MONGOLAB_URI"))), "heroku_app7072950");
+        String mongolab_uri = System.getenv("MONGOLAB_URI");
+        System.out.println("mongolab_uri = " + mongolab_uri);
+        mongoTemplate = new MongoTemplate(new Mongo(new MongoURI(mongolab_uri)), "heroku_app7072950");
     }
 
-    public void run(String categoryAsString) {
-
+    public void run(String categoryAsString) throws Exception {
         try {
             audit = new Audit(mongoTemplate);
             driver = new HtmlUnitDriver(true);
@@ -43,7 +42,9 @@ public class AppointmentMaker {
             AppointmentCategory category = AppointmentCategory.valueOf(categoryAsString);
 
             if (!appointmentSlotAvailableFor(category)) {
-                audit.append("No available slot found for " + category.name());
+                String message = "No available slot found for " + category.name();
+                System.out.println("message = " + message);
+                audit.append(message);
             } else {
                 ContactDetails contactDetails = loadContactDetails();
 
@@ -102,8 +103,6 @@ public class AppointmentMaker {
                 audit.append("Booked appointment on " + bookedAppointment + " for " + category);
 
             }
-        } catch (Exception e) {
-
         } finally {
             driver.close();
             audit.save();
