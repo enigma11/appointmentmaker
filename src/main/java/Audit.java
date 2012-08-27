@@ -18,7 +18,7 @@ public class Audit {
 
     public Audit(MongoTemplate mongoTemplate) {
         this.mongoTemplate = mongoTemplate;
-        auditMessagBuilder.append("Started: " + new Date());
+        auditMessagBuilder.append("Started: " + new Date() + "\n");
     }
 
     public void append(String message) {

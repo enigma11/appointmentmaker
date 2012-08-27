@@ -101,11 +101,12 @@ public class AppointmentMaker {
 
                 mongoTemplate.save(new Appointment(category, df.parse(date)));
                 audit.append("Booked appointment on " + bookedAppointment + " for " + category);
-
             }
         } finally {
-            driver.close();
+            String auditMessage = audit.getAuditMessage();
+            System.out.println("auditMessage = " + auditMessage);
             audit.save();
+            driver.close();
         }
     }
 
