@@ -1,14 +1,20 @@
 import com.google.code.tempusfugit.temporal.Condition;
+import com.mongodb.Mongo;
+import com.mongodb.MongoURI;
 import org.openqa.selenium.By;
-import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.firefox.FirefoxDriver;
+import org.openqa.selenium.htmlunit.HtmlUnitDriver;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.Date;
+import java.util.List;
+import java.util.Properties;
+import java.util.logging.Level;
 
 import static com.google.code.tempusfugit.temporal.Duration.seconds;
 import static com.google.code.tempusfugit.temporal.Timeout.timeout;
@@ -17,122 +23,162 @@ import static com.google.code.tempusfugit.temporal.WaitFor.waitOrTimeout;
 public class AppointmentMaker {
 
     private static final SimpleDateFormat df = new SimpleDateFormat("dd MMMMMMMMM yyyy");
-    private static final String GREEK_EMBASSY_APPOINTMENT_MAKER_APP = "http://www.greekembassy.org.uk/ScheduleanAppointment.aspx";
-    private static final WebDriver driver = new FirefoxDriver();
+    private static final String GREEK_EMBASSY_SCHEDULE_APPOINTMENT_PAGE = "http://www.greekembassy.org.uk/ScheduleanAppointment.aspx";
+    private static HtmlUnitDriver driver;
+    private static Audit audit;
+    private final MongoTemplate mongoTemplate;
 
-    public static void main(String[] args) throws Exception {
+
+    public AppointmentMaker() throws Exception {
+        turnOffHtmlUnitLoggerOff();
+        mongoTemplate = new MongoTemplate(new Mongo(new MongoURI(System.getenv("MONGOLAB_URI"))), "appointment-maker");
+    }
+
+    public void run(String categoryAsString) {
+
         try {
-            AppointmentCategory category = AppointmentCategory.valueOf(args[0].toUpperCase());
-            ContactDetails contactDetails = loadContactDetails();
+            audit = new Audit(mongoTemplate);
+            driver = new HtmlUnitDriver(true);
 
-            System.out.println("Looking appointment for " + category.name());
-            fillOutContactDetails(contactDetails);
+            AppointmentCategory category = AppointmentCategory.valueOf(categoryAsString);
 
-            WebElement nextStep = driver.findElement(By.id("dnn_ctr549_ViewAppointmentWizard_step2NextCommandButton"));
-            nextStep.click();
+            if (!appointmentSlotAvailableFor(category)) {
+                audit.append("No available slot found for " + category.name());
+            } else {
+                ContactDetails contactDetails = loadContactDetails();
 
+                goTo(GREEK_EMBASSY_SCHEDULE_APPOINTMENT_PAGE);
 
-            final int optionValue = category.optionValue();
-            WebElement option = waitForOptionToDisplayAndReturn(new ElementFinder<WebElement>() {
-                @Override
-                public WebElement find() {
-                    return driver.findElement(By.xpath("//select/option[@value=" + optionValue + "]"));
+                audit.append("Looking appointment for " + category.name());
+                fillOutContactDetailsAndProceedToNextPage(contactDetails);
+                selectAppointmentCategoryIfSlotAvailable(category);
+
+                List<WebElement> availableDays = availableDays(category);
+                WebElement earliestAvailableDay = availableDays.get(0);
+
+                String date = earliestAvailableDate(earliestAvailableDay);
+                if (isAlreadyExistingAppointmentEarlierThanNewlyFoundSlot(category, date, mongoTemplate)) {
+                    return;
                 }
-            });
 
-            if (option == null) {
-                noAppointmentAvailable(category);
+                audit.append("Finding available appointments for " + date);
+                earliestAvailableDay.click();
+
+                List<WebElement> availableTimes = waitForOptionToDisplayAndReturn(new ElementFinder<List<WebElement>>() {
+                    @Override
+                    public List<WebElement> find() {
+                        return driver.findElements(By.xpath("//a[starts-with(@id, 'dnn_ctr549_ViewAppointmentWizard_availableTimesRepeater_ctl')]"));
+                    }
+                });
+
+
+                WebElement earliestTime = availableTimes.get(0);
+                earliestTime.click();
+
+                String appointment = category + " appointment on " + date + earliestTime.getText();
+                audit.append("Found " + appointment);
+
+                WebElement confirmAppointment = waitForOptionToDisplayAndReturn(new ElementFinder<WebElement>() {
+                    @Override
+                    public WebElement find() {
+                        return driver.findElement(By.xpath("//table[@id='dnn_ctr549_ViewAppointmentWizard_step3NextTable']//a[@id='dnn_ctr549_ViewAppointmentWizard_step3NextCommandButton']"));
+                    }
+                });
+
+                audit.append("Confirming appointment");
+                confirmAppointment.click();
+
+                WebElement doneButton = waitForOptionToDisplayAndReturn(new ElementFinder<WebElement>() {
+                    @Override
+                    public WebElement find() {
+                        return driver.findElement(By.xpath("//a[@id='dnn_ctr549_ViewAppointmentWizard_doneCommandButton']"));
+                    }
+                });
+
+                String bookedAppointment = driver.findElement(By.id("dnn_ctr549_ViewAppointmentWizard_appointmentDateTimeLabel")).getText();
+                doneButton.click();
+
+                mongoTemplate.save(new Appointment(category, df.parse(date)));
+                audit.append("Booked appointment on " + bookedAppointment + " for " + category);
+
             }
+        } catch (Exception e) {
 
-            String optionClass = driver.findElement(By.xpath("//select/option[@value=" + optionValue + "]")).getAttribute("class");
-            if (!optionClass.isEmpty()) {
-                noAppointmentAvailable(category);
-            }
-
-            System.out.println("Found appointments for " + category);
-            option.click();
-
-            List<WebElement> availableDays = waitForOptionToDisplayAndReturn(new ElementFinder<List<WebElement>>() {
-                @Override
-                public List<WebElement> find() {
-                    return driver.findElements(By.xpath("//table[@id='dnn_ctr549_ViewAppointmentWizard_calendar']/tbody/tr/td[@class='LL_Modules_AppointmentWizard_DayStyle Normal']/a"));
-                }
-            });
-
-            if (availableDays.isEmpty()) {
-                noAppointmentAvailable(category);
-            }
-
-
-            String monthYear = driver.findElement(By.xpath("//table[@id='dnn_ctr549_ViewAppointmentWizard_calendar']//table[@class='LL_Modules_AppointmentWizard_TitleStyle SubHead']//td[2]")).getText();
-
-            StringBuilder appointment = new StringBuilder();
-            WebElement earliestAvailableDay = availableDays.get(0);
-            String date = earliestAvailableDay.getText() + " " + monthYear;
-
-            Set<String> existingAppointments = findExistingAppointmentsFor(category);
-
-            if (isAvailableAppointmentAfter(existingAppointments, date, category)) {
-                try {
-                    System.out.println("Found earlier existing appointment. Not booked new appointment");
-                    System.exit(0);
-                } finally {
-                    driver.close();
-                }
-            }
-
-            appointment.append(category).append(" appointment on ").append(date);
-
-            System.out.println("Finding available appointments for " + date);
-            earliestAvailableDay.click();
-
-            List<WebElement> availableTimes = waitForOptionToDisplayAndReturn(new ElementFinder<List<WebElement>>() {
-                @Override
-                public List<WebElement> find() {
-                    return driver.findElements(By.xpath("//a[starts-with(@id, 'dnn_ctr549_ViewAppointmentWizard_availableTimesRepeater_ctl')]"));
-                }
-            });
-
-
-            WebElement earliestTime = availableTimes.get(0);
-            earliestTime.click();
-
-            appointment.append(" ").append(earliestTime.getText());
-            System.out.println("Found " + appointment.toString());
-
-            WebElement confirmAppointment = waitForOptionToDisplayAndReturn(new ElementFinder<WebElement>() {
-                @Override
-                public WebElement find() {
-                    return driver.findElement(By.xpath("//table[@id='dnn_ctr549_ViewAppointmentWizard_step3NextTable']//a[@id='dnn_ctr549_ViewAppointmentWizard_step3NextCommandButton']"));
-                }
-            });
-
-            System.out.println("Confirming appointment");
-            confirmAppointment.click();
-
-            WebElement doneButton = waitForOptionToDisplayAndReturn(new ElementFinder<WebElement>() {
-                @Override
-                public WebElement find() {
-                    return driver.findElement(By.xpath("//a[@id='dnn_ctr549_ViewAppointmentWizard_doneCommandButton']"));
-                }
-            });
-
-            String bookedAppointment = driver.findElement(By.id("dnn_ctr549_ViewAppointmentWizard_appointmentDateTimeLabel")).getText();
-            doneButton.click();
-            System.out.println("Booked appointment on " + bookedAppointment + " for " + category);
-
-            File appointmentMarker = new File(fileFormat(category, date));
-            appointmentMarker.createNewFile();
-
-            System.exit(0);
         } finally {
             driver.close();
+            audit.save();
         }
     }
 
+    private static String earliestAvailableDate(WebElement earliestAvailableDay) {
+        String monthYear = driver.findElement(By.xpath("//table[@id='dnn_ctr549_ViewAppointmentWizard_calendar']//table[@class='LL_Modules_AppointmentWizard_TitleStyle SubHead']//td[2]")).getText();
+        return earliestAvailableDay.getText() + " " + monthYear;
+    }
+
+    private static List<WebElement> availableDays(AppointmentCategory category) throws Exception {
+        List<WebElement> availableDays = waitForOptionToDisplayAndReturn(new ElementFinder<List<WebElement>>() {
+            @Override
+            public List<WebElement> find() {
+                return driver.findElements(By.xpath("//table[@id='dnn_ctr549_ViewAppointmentWizard_calendar']/tbody/tr/td[@class='LL_Modules_AppointmentWizard_DayStyle Normal']/a"));
+            }
+        });
+
+        if (availableDays.isEmpty()) {
+            noAppointmentAvailable(category);
+        }
+
+        return availableDays;
+    }
+
+    private static void selectAppointmentCategoryIfSlotAvailable(AppointmentCategory category) throws Exception {
+        final int optionValue = category.optionValue();
+        WebElement option = waitForOptionToDisplayAndReturn(new ElementFinder<WebElement>() {
+            @Override
+            public WebElement find() {
+                return driver.findElement(By.xpath("//select/option[@value=" + optionValue + "]"));
+            }
+        });
+
+        if (option == null) {
+            noAppointmentAvailable(category);
+        }
+
+        String optionClass = driver.findElement(By.xpath("//select/option[@value=" + optionValue + "]")).getAttribute("class");
+        if (!optionClass.isEmpty()) {
+            noAppointmentAvailable(category);
+        }
+
+        audit.append("Found appointments for " + category);
+        option.click();
+    }
+
+    private static void fillOutContactDetailsAndProceedToNextPage(ContactDetails contactDetails) {
+        fillOutContactDetails(contactDetails);
+        WebElement nextStep = driver.findElement(By.id("dnn_ctr549_ViewAppointmentWizard_step2NextCommandButton"));
+        nextStep.click();
+    }
+
+    private static void goTo(String greekEmbassyAppointmentMakerApp) {
+        driver.get(greekEmbassyAppointmentMakerApp);
+    }
+
+    private static boolean appointmentSlotAvailableFor(AppointmentCategory category) {
+        driver.get("http://www.greekembassy.org.uk/ScheduleanAppointment/ctl/ViewAvailability/mid/549.aspx");
+        int availabilityDataGridNoOfRows = driver.findElements(By.xpath("//table[@id='dnn_ctr549_ViewAvailability_dataGrid']//tr[starts-with(@class, 'Normal')]")).size();
+
+        for (int index = 1; index < availabilityDataGridNoOfRows + 1; index++) {
+            if (driver.findElements(By.xpath("//table[@id='dnn_ctr549_ViewAvailability_dataGrid']//tr[starts-with(@class, 'Normal')][" + index + "]/td")).get(1).getText().contains(category.description())) {
+                String noOfAppointmentsForCategoryText = driver.findElements(By.xpath("//table[@id='dnn_ctr549_ViewAvailability_dataGrid']//tr[starts-with(@class, 'Normal')][" + index + "]/td")).get(2).getText();
+                Integer noOfAppointmentsForCategory = Integer.valueOf(noOfAppointmentsForCategoryText);
+                return noOfAppointmentsForCategory > 0;
+            }
+        }
+
+        return false;
+    }
+
     private static void fillOutContactDetails(ContactDetails contactDetails) {
-        System.out.println("Filling form");
-        driver.get(GREEK_EMBASSY_APPOINTMENT_MAKER_APP);
+        audit.append("Filling form");
         WebElement fn = driver.findElement(By.id("dnn_ctr549_ViewAppointmentWizard_firstNameTextBox"));
         fn.sendKeys(contactDetails.getFirstName());
 
@@ -146,47 +192,35 @@ public class AppointmentMaker {
         tel.sendKeys(contactDetails.getTelephone());
     }
 
-    private static ContactDetails loadContactDetails() throws IOException {
-        InputStream contactResource = Thread.currentThread().getContextClassLoader().getResourceAsStream("contact.properties");
-
-        Properties contact = new Properties();
-        contact.load(contactResource);
-        String firstName = contact.getProperty("name.first");
-        String lastName = contact.getProperty("name.last");
-        String email = contact.getProperty("email");
-        String telephone = contact.getProperty("telephone");
-
-        return new ContactDetails(firstName, lastName, email, telephone);
+    private ContactDetails loadContactDetails() throws IOException {
+        return mongoTemplate.findAll(ContactDetails.class).get(0);
+//
+//        InputStream contactResource = Thread.currentThread().getContextClassLoader().getResourceAsStream("contact.properties");
+//
+//        Properties contact = new Properties();
+//        contact.load(contactResource);
+//        String firstName = contact.getProperty("name.first");
+//        String lastName = contact.getProperty("name.last");
+//        String email = contact.getProperty("email");
+//        String telephone = contact.getProperty("telephone");
+//
+//        return new ContactDetails(firstName, lastName, email, telephone);
     }
 
-    private static boolean isAvailableAppointmentAfter(Set<String> existingAppointments, String dateAsString, AppointmentCategory category) throws Exception {
-        for (String existingAppointment : existingAppointments) {
-            String existingAppointmentDateAsString = existingAppointment.replace(category.name(), "").replace("_", " ");
-            Date existingAppointmentAsDate = df.parse(existingAppointmentDateAsString);
-            Date newAppointmentAsDate = df.parse(dateAsString);
-            if (newAppointmentAsDate.after(existingAppointmentAsDate)) {
-                return true;
+    private static boolean isAlreadyExistingAppointmentEarlierThanNewlyFoundSlot(AppointmentCategory category, String newDateAsString, MongoTemplate mongoTemplate) throws Exception {
+        Query query = Query.query(Criteria.where("appointmentCategory").is(category.name()));
+        List<Appointment> appointments = mongoTemplate.find(query, Appointment.class);
+
+        if (!appointments.isEmpty()) {
+            Date newAppointmentAsDate = df.parse(newDateAsString);
+            for (Appointment appointment : appointments) {
+                if (appointment.isBeforeOrOn(newAppointmentAsDate)) {
+                    audit.append("Found earlier existing appointment. Not booked new appointment");
+                    return true;
+                }
             }
         }
         return false;
-    }
-
-    private static Set<String> findExistingAppointmentsFor(AppointmentCategory category) {
-        HashSet<String> existingAppointments = new HashSet<String>();
-        File dir = new File(".");
-        if (!dir.isDirectory()) {
-            throw new IllegalStateException("wtf mate?");
-        }
-        for (File file : dir.listFiles()) {
-            if (file.getName().startsWith(category.name())) {
-                existingAppointments.add(file.getName());
-            }
-        }
-        return existingAppointments;
-    }
-
-    private static String fileFormat(AppointmentCategory category, String date) {
-        return category + "_" + date.replaceAll(" ", "_");
     }
 
     private static <T> T waitForOptionToDisplayAndReturn(final ElementFinder<?> elementFinder) throws Exception {
@@ -212,7 +246,8 @@ public class AppointmentMaker {
 
     private static void noAppointmentAvailable(AppointmentCategory category) {
         try {
-            System.out.println("No appointment found for " + category);
+            audit.append("No appointment found for " + category);
+            System.out.println("audit.getAuditMessage() = " + audit.getAuditMessage());
             System.exit(-1);
         } finally {
             driver.close();
@@ -223,49 +258,30 @@ public class AppointmentMaker {
         public abstract T find();
     }
 
-    enum AppointmentCategory {
-        PASSPORT(4),
-        MILITARY(6),
-        CERTIFICATES(5);
+    public enum AppointmentCategory {
+        PASSPORT(4, "Greek Passports"),
+        MILITARY(6, "Military Affairs / Permanent Residence Certificates"),
+        CERTIFICATES(5, "Certificates (Births - Deaths Marriages)"),
+        PERMANENT_RESIDENCE(2, "Permanent Residence Certificates (Not Military)");
 
         private final int optionValue;
+        private final String description;
 
-        AppointmentCategory(int optionValue) {
+        AppointmentCategory(int optionValue, String description) {
             this.optionValue = optionValue;
+            this.description = description;
         }
 
         public int optionValue() {
             return optionValue;
         }
+
+        public String description() {
+            return description;
+        }
     }
 
-    private static class ContactDetails {
-        private final String firstName;
-        private final String lastName;
-        private final String email;
-        private final String telephone;
-
-        public ContactDetails(String firstName, String lastName, String email, String telephone) {
-            this.firstName = firstName;
-            this.lastName = lastName;
-            this.email = email;
-            this.telephone = telephone;
-        }
-
-        public String getFirstName() {
-            return firstName;
-        }
-
-        public String getLastName() {
-            return lastName;
-        }
-
-        public String getEmail() {
-            return email;
-        }
-
-        public String getTelephone() {
-            return telephone;
-        }
+    private void turnOffHtmlUnitLoggerOff() {
+        java.util.logging.Logger.getLogger("com.gargoylesoftware").setLevel(Level.OFF);
     }
 }
