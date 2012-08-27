@@ -4,6 +4,7 @@ import com.mongodb.MongoURI;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.htmlunit.HtmlUnitDriver;
+import org.springframework.data.authentication.UserCredentials;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -31,7 +32,8 @@ public class AppointmentMaker {
         turnOffHtmlUnitLoggerOff();
         String mongolab_uri = System.getenv("MONGOLAB_URI");
         System.out.println("mongolab_uri = " + mongolab_uri);
-        mongoTemplate = new MongoTemplate(new Mongo(new MongoURI(mongolab_uri)), "heroku_app7072950");
+        MongoURI uri = new MongoURI(mongolab_uri);
+        mongoTemplate = new MongoTemplate(new Mongo(uri), "heroku_app7072950", new UserCredentials(uri.getUsername(), new String(uri.getPassword())));
     }
 
     public void run(String categoryAsString) throws Exception {
