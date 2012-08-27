@@ -1,1 +1,1 @@
-worker: sh target/bin/java-worker MILITARY
+worker: sh target/bin/java-worker
