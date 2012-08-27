@@ -4,10 +4,13 @@ public class AppointmentRunner {
 
     public static void main(String[] args) throws Exception {
         while (true) {
-//            new AppointmentMaker().run(args[0].toUpperCase());
-            new AppointmentMaker().run(AppointmentMaker.AppointmentCategory.MILITARY.name());
-
-            System.out.println("Sleeping...");
+            try {
+                System.out.println("Running...");
+                new AppointmentMaker().run(args[0].toUpperCase());
+                System.out.println("Sleeping...");
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
             TimeUnit.MINUTES.sleep(15);
         }
     }

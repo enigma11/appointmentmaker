@@ -31,7 +31,7 @@ public class AppointmentMaker {
 
     public AppointmentMaker() throws Exception {
         turnOffHtmlUnitLoggerOff();
-        mongoTemplate = new MongoTemplate(new Mongo(new MongoURI(System.getenv("MONGOLAB_URI"))), "appointment-maker");
+        mongoTemplate = new MongoTemplate(new Mongo(new MongoURI(System.getenv("MONGOLAB_URI"))), "");
     }
 
     public void run(String categoryAsString) {
