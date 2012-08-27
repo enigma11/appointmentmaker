@@ -16,7 +16,7 @@
                     <programs>
                         <program>
                             <mainClass>AppointmentRunner</mainClass>
-                            <name>appointmentMakerWorker</name>
+                            <name>java-worker</name>
                         </program>
                     </programs>
                 </configuration>

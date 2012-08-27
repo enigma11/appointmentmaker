@@ -1,1 +1,1 @@
-worker: sh target/bin/appointmentMakerWorker MILITARY
+worker: sh target/bin/java-worker MILITARY
