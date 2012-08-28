@@ -18,7 +18,7 @@ public class Appointment {
         this.appointmentSlot = appointmentSlot;
     }
 
-    public boolean isBeforeOrOn(Date newAppointmentAsDate) {
-        return appointmentSlot.before(newAppointmentAsDate) || appointmentSlot.equals(newAppointmentAsDate);
+    public Date getDate() {
+        return appointmentSlot;
     }
 }

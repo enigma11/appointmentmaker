@@ -1,7 +1,7 @@
 package com.gdiama;
 
+import com.gdiama.infrastructure.AuditRepository;
 import org.springframework.data.annotation.Transient;
-import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -22,10 +22,10 @@ public class Audit {
     @Transient
     private StringBuilder auditMessagBuilder = new StringBuilder();
     @Transient
-    private final MongoTemplate mongoTemplate;
+    private final AuditRepository auditRepository;
 
-    public Audit(MongoTemplate mongoTemplate) {
-        this.mongoTemplate = mongoTemplate;
+    public Audit(AuditRepository auditRepository) {
+        this.auditRepository = auditRepository;
         this.startDate = new Date();
     }
 
@@ -42,6 +42,6 @@ public class Audit {
         getAuditMessage();
         endDate = new Date();
         duration = endDate.getTime() - startDate.getTime();
-        mongoTemplate.save(this);
+        auditRepository.save(this);
     }
 }
