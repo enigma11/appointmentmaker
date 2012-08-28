@@ -15,7 +15,7 @@
                     <assembleDirectory>target</assembleDirectory>
                     <programs>
                         <program>
-                            <mainClass>AppointmentRunner</mainClass>
+                            <mainClass>com.gdiama.AppointmentRunner</mainClass>
                             <name>java-worker</name>
                         </program>
                     </programs>
@@ -44,7 +44,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>AppointmentRunner</mainClass>
+                            <mainClass>com.gdiama.AppointmentRunner</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>

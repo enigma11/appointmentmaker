@@ -1,3 +1,5 @@
+package com.gdiama.domain;
+
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -7,11 +9,11 @@ import java.util.Date;
 public class Appointment {
 
     @Field("appointmentCategory")
-    private AppointmentMaker.AppointmentCategory appointmentCategory;
+    private AppointmentCategory appointmentCategory;
     @Field("appointmentSlot")
     private Date appointmentSlot;
 
-    public Appointment(AppointmentMaker.AppointmentCategory appointmentCategory, Date appointmentSlot) {
+    public Appointment(AppointmentCategory appointmentCategory, Date appointmentSlot) {
         this.appointmentCategory = appointmentCategory;
         this.appointmentSlot = appointmentSlot;
     }

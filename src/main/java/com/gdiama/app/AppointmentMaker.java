@@ -1,15 +1,21 @@
+package com.gdiama.app;
+
+import com.gdiama.Audit;
+import com.gdiama.domain.Appointment;
+import com.gdiama.domain.AppointmentCategory;
+import com.gdiama.domain.AppointmentRequest;
+import com.gdiama.domain.ContactDetails;
+import com.gdiama.infrastructure.ContactsRepository;
+import com.gdiama.infrastructure.MongoDB;
+import com.gdiama.pages.AvailabilityReport;
 import com.google.code.tempusfugit.temporal.Condition;
-import com.mongodb.Mongo;
-import com.mongodb.MongoURI;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.htmlunit.HtmlUnitDriver;
-import org.springframework.data.authentication.UserCredentials;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 
-import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -26,29 +32,28 @@ public class AppointmentMaker {
     private static HtmlUnitDriver driver;
     private static Audit audit;
     private final MongoTemplate mongoTemplate;
+    private final ContactsRepository contactsRepository;
 
 
-    public AppointmentMaker() throws Exception {
+    public AppointmentMaker(final MongoDB mongoDB, final ContactsRepository contactsRepository) throws Exception {
+        this.contactsRepository = contactsRepository;
+        this.mongoTemplate = mongoDB.getMongoTemplate();
         turnOffHtmlUnitLoggerOff();
-        String mongolab_uri = System.getenv("MONGOLAB_URI");
-        System.out.println("mongolab_uri = " + mongolab_uri);
-        MongoURI uri = new MongoURI(mongolab_uri);
-        mongoTemplate = new MongoTemplate(new Mongo(uri), "heroku_app7072950", new UserCredentials(uri.getUsername(), new String(uri.getPassword())));
     }
 
-    public void run(String categoryAsString) throws Exception {
+    public void run(AppointmentRequest request) throws Exception {
         try {
             audit = new Audit(mongoTemplate);
             driver = new HtmlUnitDriver(true);
 
-            AppointmentCategory category = AppointmentCategory.valueOf(categoryAsString);
+            AppointmentCategory category = request.getAppointmentCategory();
 
-            if (!appointmentSlotAvailableFor(category)) {
+            AvailabilityReport fetch = new AvailabilityReport(driver).fetch();
+            if (!fetch.hasAvailableSlotsFor(category)) {
                 String message = "No available slot found for " + category.name();
-                System.out.println("message = " + message);
                 audit.append(message);
             } else {
-                ContactDetails contactDetails = loadContactDetails();
+                ContactDetails contactDetails = contactsRepository.loadContactDetails();
 
                 goTo(GREEK_EMBASSY_SCHEDULE_APPOINTMENT_PAGE);
 
@@ -164,21 +169,6 @@ public class AppointmentMaker {
         driver.get(greekEmbassyAppointmentMakerApp);
     }
 
-    private static boolean appointmentSlotAvailableFor(AppointmentCategory category) {
-        driver.get("http://www.greekembassy.org.uk/ScheduleanAppointment/ctl/ViewAvailability/mid/549.aspx");
-        int availabilityDataGridNoOfRows = driver.findElements(By.xpath("//table[@id='dnn_ctr549_ViewAvailability_dataGrid']//tr[starts-with(@class, 'Normal')]")).size();
-
-        for (int index = 1; index < availabilityDataGridNoOfRows + 1; index++) {
-            if (driver.findElements(By.xpath("//table[@id='dnn_ctr549_ViewAvailability_dataGrid']//tr[starts-with(@class, 'Normal')][" + index + "]/td")).get(1).getText().contains(category.description())) {
-                String noOfAppointmentsForCategoryText = driver.findElements(By.xpath("//table[@id='dnn_ctr549_ViewAvailability_dataGrid']//tr[starts-with(@class, 'Normal')][" + index + "]/td")).get(2).getText();
-                Integer noOfAppointmentsForCategory = Integer.valueOf(noOfAppointmentsForCategoryText);
-                return noOfAppointmentsForCategory > 0;
-            }
-        }
-
-        return false;
-    }
-
     private static void fillOutContactDetails(ContactDetails contactDetails) {
         audit.append("Filling form");
         WebElement fn = driver.findElement(By.id("dnn_ctr549_ViewAppointmentWizard_firstNameTextBox"));
@@ -192,21 +182,6 @@ public class AppointmentMaker {
 
         WebElement tel = driver.findElement(By.id("dnn_ctr549_ViewAppointmentWizard_phoneTextBox"));
         tel.sendKeys(contactDetails.getTelephone());
-    }
-
-    private ContactDetails loadContactDetails() throws IOException {
-        return mongoTemplate.findAll(ContactDetails.class).get(0);
-//
-//        InputStream contactResource = Thread.currentThread().getContextClassLoader().getResourceAsStream("contact.properties");
-//
-//        Properties contact = new Properties();
-//        contact.load(contactResource);
-//        String firstName = contact.getProperty("name.first");
-//        String lastName = contact.getProperty("name.last");
-//        String email = contact.getProperty("email");
-//        String telephone = contact.getProperty("telephone");
-//
-//        return new ContactDetails(firstName, lastName, email, telephone);
     }
 
     private static boolean isAlreadyExistingAppointmentEarlierThanNewlyFoundSlot(AppointmentCategory category, String newDateAsString, MongoTemplate mongoTemplate) throws Exception {
@@ -258,29 +233,6 @@ public class AppointmentMaker {
 
     public static abstract class ElementFinder<T> {
         public abstract T find();
-    }
-
-    public enum AppointmentCategory {
-        PASSPORT(4, "Greek Passports"),
-        MILITARY(6, "Military Affairs / Permanent Residence Certificates"),
-        CERTIFICATES(5, "Certificates (Births - Deaths Marriages)"),
-        PERMANENT_RESIDENCE(2, "Permanent Residence Certificates (Not Military)");
-
-        private final int optionValue;
-        private final String description;
-
-        AppointmentCategory(int optionValue, String description) {
-            this.optionValue = optionValue;
-            this.description = description;
-        }
-
-        public int optionValue() {
-            return optionValue;
-        }
-
-        public String description() {
-            return description;
-        }
     }
 
     private void turnOffHtmlUnitLoggerOff() {
