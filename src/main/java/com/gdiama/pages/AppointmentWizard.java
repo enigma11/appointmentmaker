@@ -60,7 +60,6 @@ public class AppointmentWizard {
         return this;
     }
 
-
     public AppointmentWizard selectAppointmentCategory(AppointmentCategory category) throws Exception {
         this.category = category;
         final int optionValue = category.optionValue();
