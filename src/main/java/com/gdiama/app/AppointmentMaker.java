@@ -1,17 +1,11 @@
 package com.gdiama.app;
 
 import com.gdiama.Audit;
-import com.gdiama.domain.Appointment;
-import com.gdiama.domain.AppointmentCategory;
-import com.gdiama.domain.AppointmentRequest;
-import com.gdiama.domain.ContactDetails;
+import com.gdiama.domain.*;
 import com.gdiama.infrastructure.AppointmentRepository;
 import com.gdiama.infrastructure.AuditRepository;
 import com.gdiama.infrastructure.ContactsRepository;
 import com.gdiama.pages.AppointmentWizard;
-import com.gdiama.pages.AvailabilityReport;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.firefox.FirefoxDriver;
 import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 
 import java.util.List;
@@ -30,16 +24,13 @@ public class AppointmentMaker {
         turnOffHtmlUnitLoggerOff();
     }
 
-    public void run(AppointmentRequest request) throws Exception {
+    public void run(AppointmentRequest request, AvailabilityReport availabilityReport) throws Exception {
         Audit audit = new Audit(auditRepository);
         HtmlUnitDriver driver = new HtmlUnitDriver(true);
 
         try {
-
             AppointmentCategory category = request.getAppointmentCategory();
-
-            AvailabilityReport fetch = new AvailabilityReport(driver).fetch();
-            if (!fetch.hasAvailableSlotsFor(category)) {
+            if (!availabilityReport.hasAvailableSlotsFor(category)) {
                 audit.append("No available slot found for " + category.name());
             } else {
                 ContactDetails contactDetails = contactsRepository.loadContactDetails();

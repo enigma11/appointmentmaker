@@ -1,18 +1,19 @@
 package com.gdiama.pages;
 
 import com.gdiama.domain.AppointmentCategory;
+import com.gdiama.domain.AvailabilityReport;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class AvailabilityReport {
+public class AvailabilityReportPage {
 
     private final WebDriver driver;
     private final Map<AppointmentCategory, Integer> availabilityPerCategory = new HashMap<AppointmentCategory, Integer>();
 
-    public AvailabilityReport(WebDriver webDriver) {
+    public AvailabilityReportPage(WebDriver webDriver) {
         this.driver = webDriver;
     }
 
@@ -32,10 +33,6 @@ public class AvailabilityReport {
             }
         }
 
-        return this;
-    }
-
-    public boolean hasAvailableSlotsFor(AppointmentCategory category) {
-        return availabilityPerCategory.get(category) > 0;
+        return new AvailabilityReport(availabilityPerCategory);
     }
 }
