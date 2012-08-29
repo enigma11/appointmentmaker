@@ -11,26 +11,20 @@ import java.util.concurrent.TimeUnit;
 
 public class AppointmentRunner {
 
-
     public static void main(String[] args) throws Exception {
-        while (true) {
-            try {
-                System.out.println("Running...");
+        try {
+            System.out.println("Running...");
 
-                MongoDB mongoDB = MongoDB.get();
-                AppointmentMaker appointmentMaker = new AppointmentMaker(
-                        new ContactsRepository(mongoDB),
-                        new AppointmentRepository(mongoDB),
-                        new AuditRepository(mongoDB)
-                );
+            MongoDB mongoDB = MongoDB.get();
+            AppointmentMaker appointmentMaker = new AppointmentMaker(
+                    new ContactsRepository(mongoDB),
+                    new AppointmentRepository(mongoDB),
+                    new AuditRepository(mongoDB)
+            );
 
-                appointmentMaker.run(new AppointmentRequest(args[0].toUpperCase()));
-
-                System.out.println("Sleeping...");
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            TimeUnit.MINUTES.sleep(15);
+            appointmentMaker.run(new AppointmentRequest(args[0].toUpperCase()));
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 }
