@@ -24,7 +24,8 @@ public class AppointmentRunner {
 
             appointmentMaker.run(new AppointmentRequest(args[0].toUpperCase()));
         } catch (Exception e) {
-            System.out.println("e = " + e);
+            throw new RuntimeException(e);
+//            System.out.println("e = " + e);
 //            e.printStackTrace();
         }
     }
