@@ -245,7 +245,7 @@ public class AppointmentWizard {
     }
 
     private Date getBookedDate(String timeText) {
-        String time = timeText.replace("am", "");
+        String time = timeText.replace("am", "").replace("pm", "");
         String hours = time.split(":")[0];
         String minutes = time.split(":")[1];
 
