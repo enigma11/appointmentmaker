@@ -14,6 +14,8 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static com.gdiama.util.WaitFor.waitForOptionToDisplayAndReturn;
 
@@ -238,16 +240,16 @@ public class AppointmentWizard {
 
         public boolean isBeforeOrOnSameDayAs(Date otherDate) {
             Date truncateDate = DateUtils.truncate(otherDate, Calendar.DAY_OF_MONTH);
-            boolean before = availableDate.before(truncateDate);
-            System.out.println("before = " + before);
-            return before;
+            return availableDate.before(truncateDate);
         }
     }
 
     private Date getBookedDate(String timeText) {
-        String time = timeText.replace("am", "").replace("pm", "");
-        String hours = time.split(":")[0];
-        String minutes = time.split(":")[1];
+        Matcher matcher = Pattern.compile("([0-9]+):([0-9]+)").matcher(timeText);
+        matcher.find();
+
+        String hours = matcher.group(1);
+        String minutes = matcher.group(2);
 
         Date bookedDate = DateUtils.addHours(appointmentCandidateDay, Integer.valueOf(hours));
         bookedDate = DateUtils.addMinutes(bookedDate, Integer.valueOf(minutes));
