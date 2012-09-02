@@ -12,6 +12,7 @@ public class Appointment {
     private AppointmentCategory appointmentCategory;
     @Field("appointmentSlot")
     private Date appointmentSlot;
+    private Date bookedOn = new Date();
 
     public Appointment(AppointmentCategory appointmentCategory, Date appointmentSlot) {
         this.appointmentCategory = appointmentCategory;
