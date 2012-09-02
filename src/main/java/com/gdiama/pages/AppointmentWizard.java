@@ -228,8 +228,7 @@ public class AppointmentWizard {
 
             for (Appointment appointment : appointments) {
 //                if(appointment.category.equals(category)) {
-                if (this.isBeforeOrOnSameDayAs(appointment.getDate())) {
-
+                if (this.isBefore(appointment.getDate())) {
                     return true;
                 }
             }
@@ -238,9 +237,10 @@ public class AppointmentWizard {
             return false;
         }
 
-        public boolean isBeforeOrOnSameDayAs(Date otherDate) {
-            Date truncateDate = DateUtils.truncate(otherDate, Calendar.DAY_OF_MONTH);
-            return availableDate.before(truncateDate);
+        public boolean isBefore(Date existingAppointmentDate) {
+            Date truncatedExistingAppointmentDate = DateUtils.truncate(existingAppointmentDate, Calendar.DAY_OF_MONTH);
+            Date truncatedAvailableDate = DateUtils.truncate(availableDate, Calendar.DAY_OF_MONTH);
+            return truncatedAvailableDate.before(truncatedExistingAppointmentDate);
         }
     }
 
