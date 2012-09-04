@@ -1,5 +1,6 @@
 package com.gdiama.pages;
 
+import com.gdiama.Audit;
 import com.gdiama.domain.Appointment;
 import com.gdiama.domain.AppointmentCategory;
 import com.gdiama.domain.ContactDetails;
@@ -24,14 +25,16 @@ public class AppointmentWizard {
     private static final SimpleDateFormat df = new SimpleDateFormat("dd MMMMMMMMM yyyy");
 
     private final WebDriver driver;
+    private Audit audit;
     private boolean appointmentFoundForCategory;
     private AppointmentCategory category;
     private Appointment bookedAppointment;
     private boolean skipNextSteps;
     private Date appointmentCandidateDay;
 
-    public AppointmentWizard(WebDriver driver) {
+    public AppointmentWizard(WebDriver driver, Audit audit) {
         this.driver = driver;
+        this.audit = audit;
     }
 
     public AppointmentWizard goTo() {
@@ -40,8 +43,9 @@ public class AppointmentWizard {
     }
 
     public AppointmentWizard fillOutContactDetails(ContactDetails contactDetails) {
-//        audit.append("Filling form");
-        System.out.println("Filling form");
+        audit.append("Filling out form");
+        System.out.println("Filling out form");
+
         WebElement fn = driver.findElement(By.id("dnn_ctr549_ViewAppointmentWizard_firstNameTextBox"));
         fn.sendKeys(contactDetails.getFirstName());
 
@@ -82,7 +86,7 @@ public class AppointmentWizard {
             noAppointmentAvailable(category);
         }
 
-//        audit.append("Found appointments for " + category);
+        audit.append("Found appointments for " + category);
         System.out.println("Found appointments for " + category);
         option.click();
         this.appointmentFoundForCategory = true;
@@ -96,8 +100,9 @@ public class AppointmentWizard {
             return this;
         }
 
-//        audit.append("Finding available appointments for " + onDay);
+        audit.append("Finding available appointments for " + appointmentCandidate.onDay());
         System.out.println("Finding available appointments for " + appointmentCandidate.onDay());
+
         appointmentCandidate.select();
         appointmentCandidateDay = appointmentCandidate.onDay();
         return this;
@@ -121,10 +126,10 @@ public class AppointmentWizard {
 
         String timeText = earliestTime.getText();
         Date bookedDate = getBookedDate(timeText);
-//        String appointment = category + " appointment on " + onDay + earliestTime.getText();
-//        audit.append("Found " + appointment);
 
         bookedAppointment = new Appointment(category, bookedDate);
+
+        audit.append("Found " + category + " appointment on " + bookedDate);
         return this;
     }
 
@@ -140,7 +145,7 @@ public class AppointmentWizard {
             }
         });
 
-//        audit.append("Confirming appointment");
+        audit.append("Confirming appointment");
         System.out.println("Confirming appointment");
         confirmAppointment.click();
 
@@ -160,6 +165,7 @@ public class AppointmentWizard {
         });
 
         String bookedAppointment = driver.findElement(By.id("dnn_ctr549_ViewAppointmentWizard_appointmentDateTimeLabel")).getText();
+        audit.append("Booked appointment on " + bookedAppointment);
         doneButton.click();
         return this;
     }
@@ -181,7 +187,7 @@ public class AppointmentWizard {
 
     private void noAppointmentAvailable(AppointmentCategory category) {
         try {
-//            audit.append("No appointment found for " + category);
+            audit.append("No appointment found for " + category);
             System.out.println("No appointment found for " + category);
             System.exit(-1);
         } finally {
@@ -190,10 +196,13 @@ public class AppointmentWizard {
     }
 
     private AppointmentCandidate earliestAvailableDate() throws Exception {
-        WebElement earliestAvailableDay = availableDays(category).get(0);
+        WebElement earliestAvailableDayElement = availableDays(category).get(0);
         String monthYear = driver.findElement(By.xpath("//table[@id='dnn_ctr549_ViewAppointmentWizard_calendar']//table[@class='LL_Modules_AppointmentWizard_TitleStyle SubHead']//td[2]")).getText();
-        String earliestAvailableDate = earliestAvailableDay.getText() + " " + monthYear;
-        return new AppointmentCandidate(earliestAvailableDay, df.parse(earliestAvailableDate));
+        String earliestAvailableDate = earliestAvailableDayElement.getText() + " " + monthYear;
+
+        audit.append("Found appointment on date '" + earliestAvailableDate + "'");
+        System.out.println("Found appointment on date '" + earliestAvailableDate + "'");
+        return new AppointmentCandidate(earliestAvailableDayElement, df.parse(earliestAvailableDate), audit);
     }
 
     public Appointment getBookedAppointment() {
@@ -207,10 +216,12 @@ public class AppointmentWizard {
     private static class AppointmentCandidate {
         private WebElement availableDateElement;
         private Date availableDate;
+        private Audit audit;
 
-        private AppointmentCandidate(WebElement availableDateElement, Date availableDate) {
+        private AppointmentCandidate(WebElement availableDateElement, Date availableDate, Audit audit) {
             this.availableDateElement = availableDateElement;
             this.availableDate = availableDate;
+            this.audit = audit;
         }
 
         public Date onDay() {
@@ -231,9 +242,10 @@ public class AppointmentWizard {
                 if (this.isBefore(appointment.getDate())) {
                     return true;
                 }
+//            }
             }
             System.out.println("Found earlier existing appointment. Not booked new appointment");
-//                    audit.append("Found earlier existing appointment. Not booked new appointment");
+            audit.append("Found earlier existing appointment. Not booked new appointment");
             return false;
         }
 
