@@ -3,13 +3,11 @@ package com.gdiama;
 import com.gdiama.app.AppointmentMaker;
 import com.gdiama.domain.AppointmentRequest;
 import com.gdiama.domain.AvailabilityReport;
-import com.gdiama.infrastructure.AppointmentRepository;
-import com.gdiama.infrastructure.AuditRepository;
-import com.gdiama.infrastructure.ContactsRepository;
-import com.gdiama.infrastructure.MongoDB;
+import com.gdiama.infrastructure.*;
 import com.gdiama.pages.AvailabilityReportPage;
 import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 
+import java.util.List;
 import java.util.logging.Level;
 
 public class AppointmentRunner {
@@ -29,7 +27,13 @@ public class AppointmentRunner {
 
             AvailabilityReport availabilityReport = new AvailabilityReportPage(new HtmlUnitDriver(true)).fetch();
             availabilityReportRepository.save(availabilityReport);
-            appointmentMaker.run(new AppointmentRequest(args[0].toUpperCase()), availabilityReport);
+
+            AppointmentRequestRepository appointmentRequestRepository = new AppointmentRequestRepository(mongoDB);
+            List<AppointmentRequest> appointmentRequests = appointmentRequestRepository.loadPending();
+
+            for (AppointmentRequest appointmentRequest : appointmentRequests) {
+                appointmentMaker.run(appointmentRequest, availabilityReport);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }

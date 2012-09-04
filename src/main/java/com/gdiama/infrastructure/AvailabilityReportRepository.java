@@ -1,7 +1,6 @@
-package com.gdiama;
+package com.gdiama.infrastructure;
 
 import com.gdiama.domain.AvailabilityReport;
-import com.gdiama.infrastructure.MongoDB;
 
 public class AvailabilityReportRepository {
     private final MongoDB mongoDB;
