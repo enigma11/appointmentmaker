@@ -35,8 +35,4 @@ public class AvailabilityReportPage {
 
         return new AvailabilityReport(availabilityPerCategory);
     }
-
-    public boolean hasAvailableSlotsFor(AppointmentCategory category) {
-        return availabilityPerCategory.get(category) > 0;
-    }
 }

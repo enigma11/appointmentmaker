@@ -8,12 +8,11 @@ import java.util.Map;
 @Document
 public class AvailabilityReport {
 
-    private final Map<AppointmentCategory, Integer> availabilityPerCategory;
-    private final Date fetchDate;
+    private Map<AppointmentCategory, Integer> availabilityPerCategory;
+    private final Date sampleDate = new Date();
 
     public AvailabilityReport(Map<AppointmentCategory, Integer> availabilityPerCategory) {
         this.availabilityPerCategory = availabilityPerCategory;
-        this.fetchDate = new Date();
     }
 
     public boolean hasAvailableSlotsFor(AppointmentCategory category) {

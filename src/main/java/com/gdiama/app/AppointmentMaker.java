@@ -21,7 +21,7 @@ public class AppointmentMaker {
         this.contactsRepository = contactsRepository;
         this.appointmentRepository = appointmentRepository;
         this.auditRepository = auditRepository;
-        turnOffHtmlUnitLoggerOff();
+        turnOffNoisyHtmlUnitLoggerOff();
     }
 
     public void run(AppointmentRequest request, AvailabilityReport availabilityReport) throws Exception {
@@ -30,16 +30,15 @@ public class AppointmentMaker {
 
         try {
             AppointmentCategory category = request.getAppointmentCategory();
-
             if (!availabilityReport.hasAvailableSlotsFor(category)) {
                 audit.append("No available slot found for " + category.name());
             } else {
-                ContactDetails contactDetails = contactsRepository.loadContactDetails();
+//                ContactDetails contactDetails = contactsRepository.loadContactDetails();
                 List<Appointment> appointments = appointmentRepository.loadAppointments(category);
 
-                AppointmentWizard appointmentWizard = new AppointmentWizard(driver);
+                AppointmentWizard appointmentWizard = new AppointmentWizard(driver, audit);
                 appointmentWizard.goTo()
-                        .fillOutContactDetails(contactDetails)
+                        .fillOutContactDetails(request.getContactDetails())
                         .proceedToCategorySelection()
                         .selectAppointmentCategory(category)
                         .selectEarliestAvailableDayIfBefore(appointments)
@@ -60,7 +59,7 @@ public class AppointmentMaker {
         }
     }
 
-    private void turnOffHtmlUnitLoggerOff() {
+    private void turnOffNoisyHtmlUnitLoggerOff() {
         java.util.logging.Logger.getLogger("com.gargoylesoftware").setLevel(Level.OFF);
     }
 }
