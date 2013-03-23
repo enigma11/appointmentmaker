@@ -4,9 +4,12 @@ package com.gdiama.infrastructure;
 import com.gdiama.domain.AppointmentCategory;
 import com.gdiama.domain.AppointmentRequest;
 import com.gdiama.domain.ContactDetails;
-import org.junit.Before;
+import com.mongodb.Mongo;
+import com.mongodb.MongoURI;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.springframework.data.authentication.UserCredentials;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 
@@ -22,11 +25,13 @@ public class AppointmentRequestRepositoryTest {
 
     @BeforeClass
     public static void clean() throws UnknownHostException {
-        MongoDB mongoDB = MongoDB.get();
-        List<AppointmentRequest> all = mongoDB.getMongoTemplate().findAll(AppointmentRequest.class);
-        mongoDB.getMongoTemplate().remove(Query.query(new Criteria().all(all)), AppointmentRequest.class);
-        appointmentRequestRepository = new AppointmentRequestRepository(mongoDB);
+        MongoURI mongoURI = new MongoURI(System.getenv("MONGOLAB_URI"));
+        MongoTemplate mongoTemplate = new MongoTemplate(new Mongo(mongoURI), mongoURI.getDatabase());
 
+        List<AppointmentRequest> all = mongoTemplate.findAll(AppointmentRequest.class);
+        mongoTemplate.remove(Query.query(new Criteria().all(all)), AppointmentRequest.class);
+
+        appointmentRequestRepository = new AppointmentRequestRepository(new MongoDB(mongoTemplate));
     }
 
     @Test

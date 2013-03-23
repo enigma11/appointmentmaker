@@ -1,38 +1,38 @@
 package com.gdiama.infrastructure;
 
-import com.mongodb.Mongo;
-import com.mongodb.MongoURI;
-import org.springframework.data.authentication.UserCredentials;
+import com.gdiama.domain.Appointment;
+import com.gdiama.domain.AppointmentCategory;
+import com.gdiama.domain.AppointmentRequest;
+import com.gdiama.domain.AppointmentRequestStatus;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 
-import java.net.UnknownHostException;
+import java.util.List;
 
-public class MongoDB {
-    private static final String MONGOLAB_URI = "MONGOLAB_URI";
-    private static volatile MongoDB mongoDB;
+public class MongoDB implements DatabaseAccess {
+
     private final MongoTemplate mongoTemplate;
 
-    public static MongoDB get() throws UnknownHostException {
-        if (mongoDB != null) {
-            return mongoDB;
-        }
-
-        mongoDB = new MongoDB();
-        return mongoDB;
+    public MongoDB(MongoTemplate mongoTemplate) {
+        this.mongoTemplate = mongoTemplate;
     }
 
-    public MongoTemplate getMongoTemplate() {
-        return mongoTemplate;
+    @Override
+    public void save(Object objectToSave) {
+        mongoTemplate.save(objectToSave);
     }
 
-    private MongoDB() throws UnknownHostException {
-        mongoTemplate = initMongoTemplate();
+    @Override
+    public List<Appointment> load(AppointmentCategory category) {
+        Query query = Query.query(Criteria.where("appointmentCategory").is(category.name()));
+        return mongoTemplate.find(query, Appointment.class);
     }
 
-    private MongoTemplate initMongoTemplate() throws UnknownHostException {
-        MongoURI mongoURI = new MongoURI(System.getenv(MONGOLAB_URI));
-        return new MongoTemplate(new Mongo(mongoURI), mongoURI.getDatabase(), new UserCredentials(mongoURI.getUsername(), new String(mongoURI.getPassword())));
+    @Override
+    public List<AppointmentRequest> load() {
+        return mongoTemplate.find(
+                Query.query(Criteria.where("status").is(AppointmentRequestStatus.PENDING)),
+                AppointmentRequest.class);
     }
-
-
 }

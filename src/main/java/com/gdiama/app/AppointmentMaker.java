@@ -1,10 +1,12 @@
 package com.gdiama.app;
 
 import com.gdiama.Audit;
-import com.gdiama.domain.*;
+import com.gdiama.domain.Appointment;
+import com.gdiama.domain.AppointmentCategory;
+import com.gdiama.domain.AppointmentRequest;
+import com.gdiama.domain.AvailabilityReport;
 import com.gdiama.infrastructure.AppointmentRepository;
 import com.gdiama.infrastructure.AuditRepository;
-import com.gdiama.infrastructure.ContactsRepository;
 import com.gdiama.pages.AppointmentWizard;
 import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 
@@ -13,15 +15,13 @@ import java.util.logging.Level;
 
 public class AppointmentMaker {
 
-    private final ContactsRepository contactsRepository;
     private final AppointmentRepository appointmentRepository;
     private final AuditRepository auditRepository;
 
-    public AppointmentMaker(final ContactsRepository contactsRepository, final AppointmentRepository appointmentRepository, final AuditRepository auditRepository) throws Exception {
-        this.contactsRepository = contactsRepository;
+    public AppointmentMaker(final AppointmentRepository appointmentRepository, final AuditRepository auditRepository) throws Exception {
         this.appointmentRepository = appointmentRepository;
         this.auditRepository = auditRepository;
-        turnOffNoisyHtmlUnitLoggerOff();
+        turnNoisyHtmlUnitLoggerOff();
     }
 
     public void run(AppointmentRequest request, AvailabilityReport availabilityReport) throws Exception {
@@ -33,8 +33,7 @@ public class AppointmentMaker {
             if (!availabilityReport.hasAvailableSlotsFor(category)) {
                 audit.append("No available slot found for " + category.name());
             } else {
-//                ContactDetails contactDetails = contactsRepository.loadContactDetails();
-                List<Appointment> appointments = appointmentRepository.loadAppointments(category);
+                List<Appointment> appointments = appointmentRepository.loadAppointmentsFor(category);
 
                 AppointmentWizard appointmentWizard = new AppointmentWizard(driver, audit);
                 appointmentWizard.goTo()
@@ -44,8 +43,7 @@ public class AppointmentMaker {
                         .selectEarliestAvailableDayIfBefore(appointments)
                         .selectEarliestAVailableTime()
                         .confirmAppointment()
-                        .done()
-                ;
+                        .done();
 
                 if (appointmentWizard.hasBookedAppointment()) {
                     Appointment bookedAppointment = appointmentWizard.getBookedAppointment();
@@ -59,7 +57,7 @@ public class AppointmentMaker {
         }
     }
 
-    private void turnOffNoisyHtmlUnitLoggerOff() {
+    private void turnNoisyHtmlUnitLoggerOff() {
         java.util.logging.Logger.getLogger("com.gargoylesoftware").setLevel(Level.OFF);
     }
 }

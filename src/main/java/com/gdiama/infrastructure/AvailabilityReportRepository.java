@@ -3,13 +3,13 @@ package com.gdiama.infrastructure;
 import com.gdiama.domain.AvailabilityReport;
 
 public class AvailabilityReportRepository {
-    private final MongoDB mongoDB;
+    private final DatabaseAccess dataAccess;
 
-    public AvailabilityReportRepository(MongoDB mongoDB) {
-        this.mongoDB = mongoDB;
+    public AvailabilityReportRepository(DatabaseAccess dataAccess) {
+        this.dataAccess = dataAccess;
     }
 
     public void save(AvailabilityReport availabilityReport) {
-        mongoDB.getMongoTemplate().save(availabilityReport);
+        dataAccess.save(availabilityReport);
     }
 }

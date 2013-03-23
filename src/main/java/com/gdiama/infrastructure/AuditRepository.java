@@ -4,13 +4,13 @@ import com.gdiama.Audit;
 
 public class AuditRepository {
 
-    private final MongoDB mongoDB;
+    private final DatabaseAccess databaseAccess;
 
-    public AuditRepository(MongoDB mongoDB) {
-        this.mongoDB = mongoDB;
+    public AuditRepository(DatabaseAccess databaseAccess) {
+        this.databaseAccess = databaseAccess;
     }
 
     public void save(Audit audit) {
-        mongoDB.getMongoTemplate().save(audit);
+        databaseAccess.save(audit);
     }
 }
