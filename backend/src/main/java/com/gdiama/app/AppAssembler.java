@@ -31,7 +31,7 @@ public class AppAssembler {
     }
 
     public AppointmentMakerFactory appointmentMakerFactory() throws Exception {
-        return new AppointmentMakerFactory(appointmentRepository(), auditRepository());
+        return new AppointmentMakerFactory(appointmentRepository(), auditRepository(), appointmentRequestRepository());
     }
 
     public AvailabilityReportService availabilityReportService() throws Exception {

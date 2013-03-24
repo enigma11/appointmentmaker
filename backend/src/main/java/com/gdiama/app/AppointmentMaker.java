@@ -6,9 +6,10 @@ import com.gdiama.domain.AppointmentCategory;
 import com.gdiama.domain.AppointmentRequest;
 import com.gdiama.domain.AvailabilityReport;
 import com.gdiama.infrastructure.AppointmentRepository;
+import com.gdiama.infrastructure.AppointmentRequestRepository;
 import com.gdiama.infrastructure.AuditRepository;
 import com.gdiama.pages.AppointmentWizard;
-import org.openqa.selenium.htmlunit.HtmlUnitDriver;
+import org.openqa.selenium.firefox.FirefoxDriver;
 
 import java.util.List;
 import java.util.logging.Level;
@@ -17,27 +18,34 @@ public class AppointmentMaker {
 
     private final AppointmentRepository appointmentRepository;
     private final AuditRepository auditRepository;
+    private final AppointmentRequestRepository appointmentRequestRepository;
 
-    public AppointmentMaker(final AppointmentRepository appointmentRepository, final AuditRepository auditRepository) throws Exception {
+    public AppointmentMaker(final AppointmentRepository appointmentRepository,
+                            final AuditRepository auditRepository,
+                            final AppointmentRequestRepository appointmentRequestRepository) throws Exception {
         this.appointmentRepository = appointmentRepository;
         this.auditRepository = auditRepository;
+        this.appointmentRequestRepository = appointmentRequestRepository;
         turnNoisyHtmlUnitLoggerOff();
     }
 
     public void run(AppointmentRequest request, AvailabilityReport availabilityReport) throws Exception {
         Audit audit = new Audit(auditRepository);
-        HtmlUnitDriver driver = new HtmlUnitDriver(true);
+//        HtmlUnitDriver driver = new HtmlUnitDriver(true);
+        FirefoxDriver driver = new FirefoxDriver();
 
         try {
+            //TODO no need for this any more, because a task will only be created and run
+            // when there are enough slots for given category
             AppointmentCategory category = request.getAppointmentCategory();
             if (!availabilityReport.hasAvailableSlotsFor(category)) {
                 audit.append("No available slot found for " + category.name());
             } else {
-                List<Appointment> appointments = appointmentRepository.loadAppointmentsFor(category);
+                List<Appointment> appointments = appointmentRepository.loadAppointmentsFor(category, request.getContactDetails());
 
-                AppointmentWizard appointmentWizard = new AppointmentWizard(driver, audit);
+                AppointmentWizard appointmentWizard = new AppointmentWizard(driver, audit, request.getContactDetails());
                 appointmentWizard.goTo()
-                        .fillOutContactDetails(request.getContactDetails())
+                        .fillOutContactDetails()
                         .proceedToCategorySelection()
                         .selectAppointmentCategory(category)
                         .selectEarliestAvailableDayIfBefore(appointments)
@@ -48,6 +56,8 @@ public class AppointmentMaker {
                 if (appointmentWizard.hasBookedAppointment()) {
                     Appointment bookedAppointment = appointmentWizard.getBookedAppointment();
                     appointmentRepository.save(bookedAppointment);
+                    request.appointmentBooked();
+                    appointmentRequestRepository.update(request);
                     audit.append("Booked appointment on " + bookedAppointment + " for " + category);
                 }
             }

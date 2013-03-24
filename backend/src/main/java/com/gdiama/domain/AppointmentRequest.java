@@ -15,7 +15,7 @@ public class AppointmentRequest {
     @Field(value = "category")
     private final AppointmentCategory appointmentCategory;
     @Field(value = "status")
-    private final AppointmentRequestStatus appointmentRequestStatus;
+    private AppointmentRequestStatus appointmentRequestStatus;
     @Field(value = "contact")
     private final ContactDetails contactDetails;
     @Field(value = "created_date")
@@ -35,5 +35,17 @@ public class AppointmentRequest {
 
     public ContactDetails getContactDetails() {
         return contactDetails;
+    }
+
+    public void appointmentBooked() {
+        this.appointmentRequestStatus = AppointmentRequestStatus.BOOKED;
+    }
+
+    public ObjectId getId() {
+        return id;
+    }
+
+    public AppointmentRequestStatus getStatus() {
+        return appointmentRequestStatus;
     }
 }

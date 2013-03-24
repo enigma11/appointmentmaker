@@ -1,12 +1,10 @@
 package com.gdiama.infrastructure;
 
-import com.gdiama.domain.Appointment;
-import com.gdiama.domain.AppointmentCategory;
-import com.gdiama.domain.AppointmentRequest;
-import com.gdiama.domain.AppointmentRequestStatus;
+import com.gdiama.domain.*;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 
 import java.util.List;
 
@@ -24,8 +22,10 @@ public class MongoDB implements DatabaseAccess {
     }
 
     @Override
-    public List<Appointment> load(AppointmentCategory category) {
-        Query query = Query.query(Criteria.where("appointmentCategory").is(category.name()));
+    public List<Appointment> load(AppointmentCategory category, ContactDetails contactDetails) {
+        Query query = Query.query(
+                Criteria.where("appointmentCategory").is(category.name()).and("contact.email").is(contactDetails.getEmail())
+        );
         return mongoTemplate.find(query, Appointment.class);
     }
 
@@ -34,5 +34,14 @@ public class MongoDB implements DatabaseAccess {
         return mongoTemplate.find(
                 Query.query(Criteria.where("status").is(AppointmentRequestStatus.PENDING)),
                 AppointmentRequest.class);
+    }
+
+    @Override
+    public void update(AppointmentRequest objectToBeUpdated) {
+        mongoTemplate.updateFirst(
+                Query.query(Criteria.where("_id").is(objectToBeUpdated.getId())),
+                Update.update("status", objectToBeUpdated.getStatus()),
+                objectToBeUpdated.getClass()
+        );
     }
 }

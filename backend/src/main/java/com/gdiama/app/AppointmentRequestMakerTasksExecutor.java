@@ -14,15 +14,21 @@ public class AppointmentRequestMakerTasksExecutor {
     }
 
     public void executeTasks(List<AppointmentMakerTask> tasks) throws InterruptedException, ExecutionException, TimeoutException {
-        ExecutorService executor = Executors.newFixedThreadPool(Math.max((tasks.size() / 2), 1), threadFactory);
+        ExecutorService executor = Executors.newFixedThreadPool(Math.max((tasks.size()/2 ), 1), threadFactory);
+        try {
+            List<Future<Void>> futureTasks = new ArrayList<Future<Void>>();
+            for (AppointmentMakerTask task : tasks) {
+                futureTasks.add(executor.submit(task));
+            }
 
-        List<Future<Void>> futureTasks = new ArrayList<Future<Void>>();
-        for (AppointmentMakerTask task : tasks) {
-            futureTasks.add(executor.submit(task));
-        }
-
-        for (Future<Void> future : futureTasks) {
-            future.get(2, TimeUnit.MINUTES);
+            for (Future<Void> future : futureTasks) {
+                future.get(80, TimeUnit.SECONDS);
+            }
+        } finally {
+            if (!executor.isShutdown()) {
+                executor.shutdown();
+                executor.awaitTermination(60, TimeUnit.SECONDS);
+            }
         }
     }
 }

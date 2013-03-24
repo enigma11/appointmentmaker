@@ -19,4 +19,8 @@ public class AppointmentRequestRepository {
     public void save(AppointmentRequest request) {
         databaseAccess.save(request);
     }
+
+    public void update(AppointmentRequest request) {
+        databaseAccess.update(request);
+    }
 }

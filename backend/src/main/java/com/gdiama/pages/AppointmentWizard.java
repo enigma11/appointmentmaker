@@ -26,15 +26,17 @@ public class AppointmentWizard {
 
     private final WebDriver driver;
     private Audit audit;
+    private final ContactDetails contactDetails;
     private boolean appointmentFoundForCategory;
     private AppointmentCategory category;
     private Appointment bookedAppointment;
     private boolean skipNextSteps;
     private Date appointmentCandidateDay;
 
-    public AppointmentWizard(WebDriver driver, Audit audit) {
+    public AppointmentWizard(WebDriver driver, Audit audit, ContactDetails contactDetails) {
         this.driver = driver;
         this.audit = audit;
+        this.contactDetails = contactDetails;
     }
 
     public AppointmentWizard goTo() {
@@ -42,7 +44,7 @@ public class AppointmentWizard {
         return this;
     }
 
-    public AppointmentWizard fillOutContactDetails(ContactDetails contactDetails) {
+    public AppointmentWizard fillOutContactDetails() {
         audit.append("Filling out form");
         System.out.println("Filling out form");
 
@@ -126,7 +128,7 @@ public class AppointmentWizard {
         String timeText = earliestTime.getText();
         Date bookedDate = getBookedDate(timeText);
 
-        bookedAppointment = new Appointment(category, bookedDate);
+        bookedAppointment = new Appointment(contactDetails, category, bookedDate);
 
         audit.append("Found " + category + " appointment on " + bookedDate);
         return this;
@@ -237,11 +239,9 @@ public class AppointmentWizard {
             }
 
             for (Appointment appointment : appointments) {
-//                if(appointment.category.equals(category)) {
                 if (this.isBefore(appointment.getDate())) {
                     return true;
                 }
-//            }
             }
             System.out.println("Found earlier existing appointment. Not booked new appointment");
             audit.append("Found earlier existing appointment. Not booked new appointment");
