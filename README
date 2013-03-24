@@ -1,0 +1,27 @@
+Appointment maker app for the Greek Embassy in London
+
+NOTE: Please keep in mind that the source is very much work in progress
+
+The app is in working order written in Java and uses MongoDb as its data store.
+In order to run it you need a mongo instance running and set environmental variable MONGOLAB_URI, e.g. mongodb://heroku_app1234:random_password@ds029017.mongolab.com:29017/heroku_app1234
+
+This app can be run on heroku. In order to make appointments, pending requests need to be found in mongodb of the form:
+
+{ "_class" : "com.gdiama.domain.AppointmentRequest", "_id" : ObjectId("514f08de03645d3870c3beee"), "category" : "PASSPORT",
+"contact" : { "email" : "email@email.com", "firstName" : "fname", "lastName" : "lname", "telephone" : "0770770000" },
+"created_date" : ISODate("2013-01-24T14:08:30.951Z"), "status" : "PENDING" }
+
+Supported categories are: PASSPORT, CERTIFICATES, MILITARY, PERMANENT_RESIDENCE
+Successful requests that result into a booking will change the request status to 'BOOKED'
+
+Example of an appointment:
+ "_id" : ObjectId("514f3bed0364b068b55f1e01"), "_class" : "com.gdiama.domain.Appointment",
+ "contact" : { "firstName" : "fname", "lastName" : "lname", "email" : "email@email.com", "telephone" : "0770770000" },
+ "appointmentCategory" : "PASSPORT", "appointmentSlot" : ISODate("2013-04-22T08:30:00Z"), "bookedOn" : ISODate("2013-03-24T17:46:11.516Z") }
+
+Scheduling is done via heroku's cron trigger addon that schedules a worker to run.
+
+Future:
+- Clean up code
+- Provide a web interface to store requests
+- Once satisfactory tested it will be made available to the public interested to make appointments via this service for free
