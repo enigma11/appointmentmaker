@@ -9,7 +9,7 @@ import com.gdiama.infrastructure.AppointmentRepository;
 import com.gdiama.infrastructure.AppointmentRequestRepository;
 import com.gdiama.infrastructure.AuditRepository;
 import com.gdiama.pages.AppointmentWizard;
-import org.openqa.selenium.firefox.FirefoxDriver;
+import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 
 import java.util.List;
 import java.util.logging.Level;
@@ -29,37 +29,30 @@ public class AppointmentMaker {
         turnNoisyHtmlUnitLoggerOff();
     }
 
-    public void run(AppointmentRequest request, AvailabilityReport availabilityReport) throws Exception {
+    public void run(AppointmentRequest request) throws Exception {
         Audit audit = new Audit(auditRepository);
-//        HtmlUnitDriver driver = new HtmlUnitDriver(true);
-        FirefoxDriver driver = new FirefoxDriver();
+        HtmlUnitDriver driver = new HtmlUnitDriver(true);
 
         try {
-            //TODO no need for this any more, because a task will only be created and run
-            // when there are enough slots for given category
             AppointmentCategory category = request.getAppointmentCategory();
-            if (!availabilityReport.hasAvailableSlotsFor(category)) {
-                audit.append("No available slot found for " + category.name());
-            } else {
-                List<Appointment> appointments = appointmentRepository.loadAppointmentsFor(category, request.getContactDetails());
+            List<Appointment> appointments = appointmentRepository.loadAppointmentsFor(category, request.getContactDetails());
 
-                AppointmentWizard appointmentWizard = new AppointmentWizard(driver, audit, request.getContactDetails());
-                appointmentWizard.goTo()
-                        .fillOutContactDetails()
-                        .proceedToCategorySelection()
-                        .selectAppointmentCategory(category)
-                        .selectEarliestAvailableDayIfBefore(appointments)
-                        .selectEarliestAVailableTime()
-                        .confirmAppointment()
-                        .done();
+            AppointmentWizard appointmentWizard = new AppointmentWizard(driver, audit, request.getContactDetails());
+            appointmentWizard.goTo()
+                    .fillOutContactDetails()
+                    .proceedToCategorySelection()
+                    .selectAppointmentCategory(category)
+                    .selectEarliestAvailableDayIfBefore(appointments)
+                    .selectEarliestAVailableTime()
+                    .confirmAppointment()
+                    .done();
 
-                if (appointmentWizard.hasBookedAppointment()) {
-                    Appointment bookedAppointment = appointmentWizard.getBookedAppointment();
-                    appointmentRepository.save(bookedAppointment);
-                    request.appointmentBooked();
-                    appointmentRequestRepository.update(request);
-                    audit.append("Booked appointment on " + bookedAppointment + " for " + category);
-                }
+            if (appointmentWizard.hasBookedAppointment()) {
+                Appointment bookedAppointment = appointmentWizard.getBookedAppointment();
+                appointmentRepository.save(bookedAppointment);
+                request.appointmentBooked();
+                appointmentRequestRepository.update(request);
+                audit.append("Booked appointment on " + bookedAppointment + " for " + category);
             }
         } finally {
             audit.save();

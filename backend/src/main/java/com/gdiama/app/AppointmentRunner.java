@@ -23,8 +23,12 @@ public class AppointmentRunner {
 
             AvailabilityReport availabilityReport = availabilityReportService.fetchAvailabilityReport();
             List<AppointmentRequest> appointmentRequests = appointmentRequestService.loadPendingRequests();
-            List<AppointmentMakerTask> tasks = appointmentMakerTasksFactory.newTasks(appointmentRequests, availabilityReport);
-            executor.executeTasks(tasks);
+            if (!appointmentRequests.isEmpty()) {
+                List<AppointmentMakerTask> tasks = appointmentMakerTasksFactory.newTasks(appointmentRequests, availabilityReport);
+                executor.executeTasks(tasks);
+            } else {
+                System.out.println("No pending appointment requests found");
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }

@@ -19,7 +19,7 @@ public class AppointmentMakerTask implements Callable<Void> {
 
     @Override
     public Void call() throws Exception {
-        appointmentMaker.run(request, availabilityReport);
+        appointmentMaker.run(request);
         return null;
     }
 }
